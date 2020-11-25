@@ -24,9 +24,10 @@ function! s:toggle_cursor(ln, col)
 endfunction
 
 " when visual selection spans multiple lines add a cursor to all the
-" selected lines on the column of the first selection
+" selected lines on the starting column of the first line
 function! s:toggle_cursors_v_multiline(sel)
-  let l:order = sort([a:sel['l_start'], a:sel['l_end']])
+  let l:order = sort([a:sel['l_start'], a:sel['l_end']], 'n')
+  echo l:order
 
   for i in range(l:order[0], l:order[1])
     call s:toggle_cursor(i, a:sel['c_start'])
@@ -63,6 +64,7 @@ function! ToggleCursorV()
 endfunction
 
 function! FreestyleRun()
+  let l:start = winsaveview()
   let b:freestyle_data = get(b:, 'freestyle_data', {})
   if b:freestyle_data == {}
     echo 'Freestyle: No cursors set!'
@@ -86,6 +88,7 @@ function! FreestyleRun()
   endfor
 
   unlet b:freestyle_data
+  call winrestview(l:start)
 endfunction
 
 vnoremap <C-j> :<c-u>call ToggleCursorV()<CR>
