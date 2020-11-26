@@ -37,10 +37,13 @@ endfunction
 function! s:toggle_cursors_v_selection(sel)
   let l:word = getline("'<")[a:sel['c_start'] -1:a:sel['c_end'] -1]
   let l:start_layout = winsaveview()
-  normal gg
-  while search('\V' . escape(l:word, '\'), '',line('$'))
+  normal! gg0
+  while search('\V' . escape(l:word, '\'), '', line('$'))
     call s:toggle_cursor(line('.'), col('.'))
   endwhile
+  if l:word == getline('1')[:len(l:word) - 1]
+    call s:toggle_cursor(1, 1)
+  endif
   call winrestview(l:start_layout)
 endfunction
 
@@ -60,6 +63,14 @@ function! ToggleCursorV()
   else
     call s:toggle_cursors_v_multiline(l:sel)
   endif
+endfunction
+
+function! s:clear()
+  let b:freestyle_data = get(b:, 'freestyle_data', {})
+  for k in values(b:freestyle_data)
+    call matchdelete(k)
+  endfor
+  unlet b:freestyle_data
 endfunction
 
 function! FreestyleRun()
@@ -85,21 +96,17 @@ function! FreestyleRun()
       execute 'normal! ' . l:cmd
     endfor
   catch /E471/
-    redraw | echo ''
   endtry
-
-  for k in values(b:freestyle_data)
-    call matchdelete(k)
-  endfor
 
   if exists(':CocEnable')
     silent! CocEnable
   endif
 
-  unlet b:freestyle_data
+  call s:clear()
   call winrestview(l:start_layout)
 endfunction
 
-vnoremap <silent><C-j> :<c-u>call ToggleCursorV()<CR>
+command! FSClear call s:clear()
+vnoremap <C-j> :<c-u>call ToggleCursorV()<CR>
 nnoremap <silent> <C-j> :call FreestyleToggleN()<CR>
 nmap  <silent> <C-k> :call FreestyleRun()<CR>
