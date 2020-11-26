@@ -9,11 +9,11 @@ function! s:list_comparer(i1, i2)
   endif
 endfunction
 
+" add a single cursor at line, col
 function! s:toggle_cursor(ln, col)
   highlight FreestyleHL ctermbg=red ctermfg=0 guibg=#ff0000 guifg=#000000
   let l:position = string([a:ln, a:col])
   let l:pattern = '\%'. a:ln . 'l\%' . a:col . 'c'
-
   let b:freestyle_data = get(b:, 'freestyle_data', {})
   if has_key(b:freestyle_data, l:position)
     call matchdelete(b:freestyle_data[l:position])
@@ -27,8 +27,6 @@ endfunction
 " selected lines on the starting column of the first line
 function! s:toggle_cursors_v_multiline(sel)
   let l:order = sort([a:sel['l_start'], a:sel['l_end']], 'n')
-  echo l:order
-
   for i in range(l:order[0], l:order[1])
     call s:toggle_cursor(i, a:sel['c_start'])
   endfor
@@ -38,11 +36,12 @@ endfunction
 " of each search match of the selection
 function! s:toggle_cursors_v_selection(sel)
   let l:word = getline("'<")[a:sel['c_start'] -1:a:sel['c_end'] -1]
-  echo l:word
+  let l:start_layout = winsaveview()
   normal gg
   while search('\V' . escape(l:word, '\'), '',line('$'))
     call s:toggle_cursor(line('.'), col('.'))
   endwhile
+  call winrestview(l:start_layout)
 endfunction
 
 function FreestyleToggleN()
@@ -64,14 +63,20 @@ function! ToggleCursorV()
 endfunction
 
 function! FreestyleRun()
-  let l:start = winsaveview()
+  let l:start_layout = winsaveview()
   let b:freestyle_data = get(b:, 'freestyle_data', {})
   if b:freestyle_data == {}
     echo 'Freestyle: No cursors set!'
     return 0
   endif
 
-  let l:cmd = input('Your command: ')
+  " Disable coc.nvim temporarily as it's making things slow
+  if exists(':CocDisable')
+    silent! CocDisable
+  endif
+
+  let l:msg = '[' . len(b:freestyle_data) . '] Your normal! command: '
+  let l:cmd = input({'prompt': l:msg, 'default':''})
   let l:cursors = map(keys(b:freestyle_data), {idx, val -> eval(val)})
 
   try
@@ -87,10 +92,14 @@ function! FreestyleRun()
     call matchdelete(k)
   endfor
 
+  if exists(':CocEnable')
+    silent! CocEnable
+  endif
+
   unlet b:freestyle_data
-  call winrestview(l:start)
+  call winrestview(l:start_layout)
 endfunction
 
-vnoremap <C-j> :<c-u>call ToggleCursorV()<CR>
+vnoremap <silent><C-j> :<c-u>call ToggleCursorV()<CR>
 nnoremap <silent> <C-j> :call FreestyleToggleN()<CR>
 nmap  <silent> <C-k> :call FreestyleRun()<CR>
