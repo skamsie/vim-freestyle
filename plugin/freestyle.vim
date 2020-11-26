@@ -1,4 +1,4 @@
-" Helper function for sorting a list of lists with 2 elements
+" helper function for sorting a list of lists with 2 elements
 function! s:list_comparer(i1, i2)
   if a:i1 == a:i2
     return 0
@@ -37,12 +37,22 @@ endfunction
 function! s:toggle_cursors_v_selection(sel)
   let l:word = getline("'<")[a:sel['c_start'] -1:a:sel['c_end'] -1]
   let l:start_layout = winsaveview()
+  let l:initial_bag = len(get(b:, 'freestyle_data', {}))
+
   normal! gg0
   while search('\V' . escape(l:word, '\'), '', line('$'))
     call s:toggle_cursor(line('.'), col('.'))
   endwhile
   if l:word == getline('1')[:len(l:word) - 1]
     call s:toggle_cursor(1, 1)
+  endif
+
+  let l:diff = len(b:freestyle_data) - l:initial_bag
+  if l:diff > 0
+    echo 'Added ' . l:diff . ' cursors for pattern: ' | echohl Comment |
+          \ echon l:word | echohl NONE | echon ' len: ' . len(l:word)
+  else
+    echo 'Removed ' . -l:diff . ' cursors'
   endif
   call winrestview(l:start_layout)
 endfunction
@@ -106,7 +116,7 @@ function! FreestyleRun()
   call winrestview(l:start_layout)
 endfunction
 
-command! FSClear call s:clear()
 vnoremap <C-j> :<c-u>call ToggleCursorV()<CR>
 nnoremap <silent> <C-j> :call FreestyleToggleN()<CR>
 nmap  <silent> <C-k> :call FreestyleRun()<CR>
+command! FSClear call s:clear()
