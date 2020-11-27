@@ -35,22 +35,23 @@ endfunction
 " when visual selection is on one line add a cursor to the beginning
 " of each search match of the selection
 function! s:toggle_cursors_v_selection(sel)
-  let l:word = getline("'<")[a:sel['c_start'] -1:a:sel['c_end'] -1]
   let l:start_layout = winsaveview()
   let l:initial_bag = len(get(b:, 'freestyle_data', {}))
-
+  let l:w = strpart(
+        \ getline('.'), a:sel['c_start'] - 1, a:sel['c_end'] - a:sel['c_start'])
+        \ . strcharpart(strpart(getline('.'), a:sel['c_end'] - 1), 0, 1)
   normal! gg0
-  while search('\V' . escape(l:word, '\'), '', line('$'))
+  while search('\V' . escape(l:w, '\'), '', line('$'))
     call s:toggle_cursor(line('.'), col('.'))
   endwhile
-  if l:word == getline('1')[:len(l:word) - 1]
+  if l:w == getline('1')[:len(l:w) - 1]
     call s:toggle_cursor(1, 1)
   endif
 
   let l:diff = len(b:freestyle_data) - l:initial_bag
   if l:diff > 0
     echo 'Added ' . l:diff . ' cursors for pattern: ' | echohl Comment |
-          \ echon l:word | echohl NONE | echon ' len: ' . len(l:word)
+          \ echon l:w | echohl NONE | echon ' len: ' . len(l:w)
   else
     echo 'Removed ' . -l:diff . ' cursors'
   endif
