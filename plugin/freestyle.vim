@@ -9,9 +9,9 @@ function! s:list_comparer(i1, i2)
   endif
 endfunction
 
-" add a single cursor at line, col
+" toggle a single cursor at line, col
 function! s:toggle_cursor(ln, col)
-  highlight FreestyleHL ctermbg=red ctermfg=0 guibg=#ff0000 guifg=#000000
+  execute 'highlight link FreestyleHL IncSearch'
   let l:position = string([a:ln, a:col])
   let l:pattern = '\%'. a:ln . 'l\%' . a:col . 'c'
   let b:freestyle_data = get(b:, 'freestyle_data', {})
@@ -38,8 +38,10 @@ function! s:toggle_cursors_v_selection(sel)
   let l:start_layout = winsaveview()
   let l:initial_bag = len(get(b:, 'freestyle_data', {}))
   let l:w = strpart(
-        \ getline('.'), a:sel['c_start'] - 1, a:sel['c_end'] - a:sel['c_start'])
-        \ . strcharpart(strpart(getline('.'), a:sel['c_end'] - 1), 0, 1)
+        \ getline('.'), a:sel['c_start'] - 1,
+        \ a:sel['c_end'] - a:sel['c_start'])
+        \ . strcharpart(strpart(getline('.'),
+        \ a:sel['c_end'] - 1), 0, 1)
   normal! gg0
   while search('\V' . escape(l:w, '\'), '', line('$'))
     call s:toggle_cursor(line('.'), col('.'))
@@ -47,33 +49,23 @@ function! s:toggle_cursors_v_selection(sel)
   if l:w == getline('1')[:len(l:w) - 1]
     call s:toggle_cursor(1, 1)
   endif
-
   let l:diff = len(b:freestyle_data) - l:initial_bag
   if l:diff > 0
-    echo 'Added ' . l:diff . ' cursors for pattern: ' | echohl Comment |
-          \ echon l:w | echohl NONE | echon ' len: ' . len(l:w)
+    echo 'Added ' . l:diff . ' cursors for pattern: ' | echohl MoreMsg |
+          \ echon l:w | echohl NONE | echon ' len: ' . strchars(l:w)
   else
     echo 'Removed ' . -l:diff . ' cursors'
   endif
   call winrestview(l:start_layout)
 endfunction
 
-function FreestyleToggleN()
-  call s:toggle_cursor(line('.'), col('.'))
-endfunction
-
-function! ToggleCursorV()
-  let l:sel = {
+function s:v_sel_coordinates()
+  return {
         \ 'l_start': getpos("'<")[1],
         \ 'l_end': getpos("'>")[1],
         \ 'c_start': getpos("'<")[2],
         \ 'c_end': getpos("'>")[2]
         \ }
-  if l:sel['l_start'] == l:sel['l_end']
-    call s:toggle_cursors_v_selection(l:sel)
-  else
-    call s:toggle_cursors_v_multiline(l:sel)
-  endif
 endfunction
 
 function! s:clear()
@@ -84,23 +76,39 @@ function! s:clear()
   unlet b:freestyle_data
 endfunction
 
-function! FreestyleRun()
+function! s:toggle_cursors(m)
+  if a:m == 'n'
+    call s:toggle_cursor(line('.'), col('.'))
+  else
+    let l:sel = s:v_sel_coordinates()
+    if l:sel['l_start'] == l:sel['l_end']
+      call s:toggle_cursors_v_selection(l:sel)
+    else
+      call s:toggle_cursors_v_multiline(l:sel)
+    endif
+  endif
+endfunction
+
+function! s:run(m) range
   let l:start_layout = winsaveview()
   let b:freestyle_data = get(b:, 'freestyle_data', {})
   if b:freestyle_data == {}
     echo 'Freestyle: No cursors set!'
     return 0
   endif
-
+  let l:f = a:firstline
+  let l:l = a:lastline
+  let l:cursors = map(keys(b:freestyle_data), {idx, val -> eval(val)})
+  if a:m == 'v'
+    let l:cursors = filter(l:cursors,
+          \ {idx, val -> val[0] >= l:f && val[0] <= l:l})
+  endif
+  let l:msg = '[' . len(l:cursors) . '] Your normal! command: '
+  let l:cmd = input({'prompt': l:msg, 'default': ''})
   " Disable coc.nvim temporarily as it's making things slow
   if exists(':CocDisable')
     silent! CocDisable
   endif
-
-  let l:msg = '[' . len(b:freestyle_data) . '] Your normal! command: '
-  let l:cmd = input({'prompt': l:msg, 'default':''})
-  let l:cursors = map(keys(b:freestyle_data), {idx, val -> eval(val)})
-
   try
     for p in reverse(sort(l:cursors, 's:list_comparer'))
       call cursor(p[0], p[1])
@@ -108,16 +116,22 @@ function! FreestyleRun()
     endfor
   catch /E471/
   endtry
-
   if exists(':CocEnable')
     silent! CocEnable
   endif
-
   call s:clear()
   call winrestview(l:start_layout)
 endfunction
 
-vnoremap <C-j> :<c-u>call ToggleCursorV()<CR>
-nnoremap <silent> <C-j> :call FreestyleToggleN()<CR>
-nmap  <silent> <C-k> :call FreestyleRun()<CR>
+" --- Commands
+command! -range FreestyleRunV <line1>,<line2>call s:run('v')
+command! -range FreestyleToggleCursorsV call s:toggle_cursors('v')
+command! FreestyleToggleCursorsN call s:toggle_cursors('n')
+command! FreestyleRunN call s:run('n')
 command! FSClear call s:clear()
+
+" --- Mappings
+nnoremap <silent><C-k> :FreestyleRunN<cr>
+vnoremap <silent><C-k> :FreestyleRunV<cr>
+nnoremap <C-j> :FreestyleToggleCursorsN<cr>
+vnoremap <C-j> :FreestyleToggleCursorsV<cr>
