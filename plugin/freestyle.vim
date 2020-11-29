@@ -51,13 +51,14 @@ function! s:toggle_cursors_v_selection(sel)
     call s:toggle_cursor(1, 1)
   endif
   let l:diff = len(b:freestyle_data) - l:initial_bag
+  call winrestview(l:start_layout)
+  redraw
   if l:diff > 0
     echo 'Added ' . l:diff . ' cursors for pattern: ' | echohl MoreMsg |
           \ echon l:w | echohl NONE | echon ' len: ' . strchars(l:w)
   else
     echo 'Removed ' . -l:diff . ' cursors'
   endif
-  call winrestview(l:start_layout)
 endfunction
 
 function! s:clear()
@@ -130,5 +131,5 @@ command! FSClear call s:clear()
 " --- Mappings
 nnoremap <silent><C-k> :FreestyleRunN<cr>
 vnoremap <silent><C-k> :FreestyleRunV<cr>
-nnoremap <C-j> :FreestyleToggleCursorsN<cr>
-vnoremap <C-j> :FreestyleToggleCursorsV<cr>
+nnoremap <silent><C-j> :FreestyleToggleCursorsN<cr>
+vnoremap <silent><C-j> :FreestyleToggleCursorsV<cr>
