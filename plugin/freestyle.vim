@@ -37,7 +37,6 @@ endfunction
 " of each search match of the selection
 function! s:toggle_cursors_v_selection(sel)
   let l:start_layout = winsaveview()
-  let l:initial_bag = len(get(b:, 'freestyle_data', {}))
   let l:w = strpart(
         \ getline('.'), a:sel['c_start'] - 1,
         \ a:sel['c_end'] - a:sel['c_start'])
@@ -50,15 +49,8 @@ function! s:toggle_cursors_v_selection(sel)
   if l:w == getline('1')[:len(l:w) - 1]
     call s:toggle_cursor(1, 1)
   endif
-  let l:diff = len(b:freestyle_data) - l:initial_bag
   call winrestview(l:start_layout)
-  redraw
-  if l:diff > 0
-    echo 'Added ' . l:diff . ' cursors for pattern: ' | echohl MoreMsg |
-          \ echon l:w | echohl NONE | echon ' len: ' . strchars(l:w)
-  else
-    echo 'Removed ' . -l:diff . ' cursors'
-  endif
+  return l:w
 endfunction
 
 function! s:clear()
@@ -70,6 +62,8 @@ function! s:clear()
 endfunction
 
 function! s:toggle_cursors(m) range
+  let l:initial_bag = len(get(b:, 'freestyle_data', {}))
+  let l:w = ''
   if a:m == 'n'
     call s:toggle_cursor(line('.'), col('.'))
   else
@@ -80,10 +74,24 @@ function! s:toggle_cursors(m) range
         \ 'c_end': getpos("'>")[2]
         \ }
     if l:sel['l_start'] == l:sel['l_end']
-      call s:toggle_cursors_v_selection(l:sel)
+      let l:w = s:toggle_cursors_v_selection(l:sel)
     else
       call s:toggle_cursors_v_multiline(l:sel)
     endif
+  endif
+  redraw
+  let l:diff = len(b:freestyle_data) - l:initial_bag
+  let l:s = l:diff == -1 || l:diff == 1 ? '' : 's'
+  if l:diff > 0
+    if l:w != ''
+      echo 'Added ' . l:diff . ' cursor' . l:s . ' for pattern: '
+            \ | echohl MoreMsg | echon l:w | echohl NONE |
+            \ echon ' len: ' . strchars(l:w)
+    else
+      echo 'Added ' . l:diff . ' cursor' . l:s
+    endif
+  else
+    echo 'Removed ' . -l:diff . ' cursor' . l:s
   endif
 endfunction
 
