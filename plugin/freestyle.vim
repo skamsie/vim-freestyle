@@ -1,3 +1,19 @@
+let g:freestyle_settings = get(g:, 'freestyle_settings', {})
+let s:settings = {
+      \ 'cursor_hl_group':
+      \   has_key(g:freestyle_settings, 'cursor_hl_group') ?
+      \     g:freestyle_settings['cursor_hl_group'] : 'IncSearch',
+      \ 'toggle_cursor_map':
+      \   has_key(g:freestyle_settings, 'toggle_cursor_map') ?
+      \     g:freestyle_settings['toggle_cursor_map'] : '<C-j>',
+      \ 'run_map':
+      \   has_key(g:freestyle_settings, 'run_map') ?
+      \     g:freestyle_settings['run_map'] : '<C-k>',
+      \ 'cancel_map':
+      \   has_key(g:freestyle_settings, 'cancel_map') ?
+      \     g:freestyle_settings['cancel_map'] : '<C-c>'
+      \ }
+
 " helper function for sorting a list of lists with 2 elements
 function! s:list_comparer(i1, i2)
   if a:i1 == a:i2
@@ -11,13 +27,16 @@ endfunction
 
 " toggle a single cursor at line, col
 function! s:toggle_cursor(ln, col)
-  execute 'highlight link FreestyleHL IncSearch'
+  exec 'highlight! link FreestyleHL ' . s:settings['cursor_hl_group']
   let l:position = string([a:ln, a:col])
   let l:pattern = '\%'. a:ln . 'l\%' . a:col . 'c'
   let b:freestyle_data = get(b:, 'freestyle_data', {})
   if has_key(b:freestyle_data, l:position)
-    call matchdelete(b:freestyle_data[l:position])
-    call remove(b:freestyle_data, l:position)
+    try
+      call matchdelete(b:freestyle_data[l:position])
+      call remove(b:freestyle_data, l:position)
+    catch/E802/
+    endtry
   else
     let b:freestyle_data[l:position] = matchadd('FreestyleHL', l:pattern)
   endif
@@ -59,6 +78,7 @@ function! s:clear()
     call matchdelete(k)
   endfor
   unlet b:freestyle_data
+  hi link FreestyleHL NONE
 endfunction
 
 function! s:toggle_cursors(m) range
@@ -136,8 +156,11 @@ command! FreestyleToggleCursorsN call s:toggle_cursors('n')
 command! FreestyleRunN call s:run('n')
 command! FSClear call s:clear()
 
-" --- Mappings
-nnoremap <silent><C-k> :FreestyleRunN<cr>
-vnoremap <silent><C-k> :FreestyleRunV<cr>
-nnoremap <silent><C-j> :FreestyleToggleCursorsN<cr>
-vnoremap <silent><C-j> :FreestyleToggleCursorsV<cr>
+" --- Dynamic Mappings Based on g:freestyle_settings
+for i in ['n', 'v']
+  execute i . 'noremap <silent>' . s:settings['toggle_cursor_map'] .
+        \ ' :FreestyleToggleCursors' . toupper(i) . '<cr>'
+  execute i . 'noremap <silent>' . s:settings['run_map'] .
+        \ ' :FreestyleRun' . toupper(i) . '<cr>'
+endfor
+map <silent><C-c> :FSClear<cr>
