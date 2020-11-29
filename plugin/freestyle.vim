@@ -1,17 +1,9 @@
 let g:freestyle_settings = get(g:, 'freestyle_settings', {})
-let s:settings = {
-      \ 'cursor_hl_group':
-      \   has_key(g:freestyle_settings, 'cursor_hl_group') ?
-      \     g:freestyle_settings['cursor_hl_group'] : 'IncSearch',
-      \ 'toggle_cursor_map':
-      \   has_key(g:freestyle_settings, 'toggle_cursor_map') ?
-      \     g:freestyle_settings['toggle_cursor_map'] : '<C-j>',
-      \ 'run_map':
-      \   has_key(g:freestyle_settings, 'run_map') ?
-      \     g:freestyle_settings['run_map'] : '<C-k>',
-      \ 'cancel_map':
-      \   has_key(g:freestyle_settings, 'cancel_map') ?
-      \     g:freestyle_settings['cancel_map'] : '<C-c>'
+let g:freestyle_settings = {
+      \ 'no_maps': get(g:freestyle_settings, 'no_maps', 0),
+      \ 'cursor_hl': get(g:freestyle_settings, 'cursor_hl', 'IncSearch'),
+      \ 'match_hl': get(g:freestyle_settings, 'match_hl', 'MoreMsg'),
+      \ 'cmd_normal!': get(g:freestyle_settings, 'cmd_normal!', 1)
       \ }
 
 " helper function for sorting a list of lists with 2 elements
@@ -27,7 +19,7 @@ endfunction
 
 " toggle a single cursor at line, col
 function! s:toggle_cursor(ln, col)
-  exec 'highlight! link FreestyleHL ' . s:settings['cursor_hl_group']
+  exec 'highlight! link FreestyleHL ' . g:freestyle_settings['cursor_hl']
   let l:position = string([a:ln, a:col])
   let l:pattern = '\%'. a:ln . 'l\%' . a:col . 'c'
   let b:freestyle_data = get(b:, 'freestyle_data', {})
@@ -72,16 +64,20 @@ function! s:toggle_cursors_v_selection(sel)
   return l:w
 endfunction
 
+" remove b:freestyle_data and clear highlight
 function! s:clear()
   let b:freestyle_data = get(b:, 'freestyle_data', {})
   for k in values(b:freestyle_data)
-    call matchdelete(k)
+    try
+      call matchdelete(k)
+    catch/E802/
+    endtry
   endfor
   unlet b:freestyle_data
   hi link FreestyleHL NONE
 endfunction
 
-function! s:toggle_cursors(m) range
+function! s:toggle_cursors(m)
   let l:initial_bag = len(get(b:, 'freestyle_data', {}))
   let l:w = ''
   if a:m == 'n'
@@ -105,8 +101,8 @@ function! s:toggle_cursors(m) range
   if l:diff > 0
     if l:w != ''
       echo 'Added ' . l:diff . ' cursor' . l:s . ' for pattern: '
-            \ | echohl MoreMsg | echon l:w | echohl NONE |
-            \ echon ' len: ' . strchars(l:w)
+            \ | exec 'echohl ' . g:freestyle_settings['match_hl'] |
+            \ echon l:w | echohl NONE | echon ' len: ' . strchars(l:w)
     else
       echo 'Added ' . l:diff . ' cursor' . l:s
     endif
@@ -115,21 +111,23 @@ function! s:toggle_cursors(m) range
   endif
 endfunction
 
-function! s:run(m) range
+function! s:run(m)
   let l:start_layout = winsaveview()
   let b:freestyle_data = get(b:, 'freestyle_data', {})
+  let l:normal = g:freestyle_settings['cmd_normal!'] <= 0 ?
+        \ 'normal ' : 'normal! '
   if b:freestyle_data == {}
     echo 'Freestyle: No cursors set!'
     return 0
   endif
-  let l:f = a:firstline
-  let l:l = a:lastline
+  let l:f = getpos("'<")[1]
+  let l:l = getpos("'>")[1]
   let l:cursors = map(keys(b:freestyle_data), {idx, val -> eval(val)})
   if a:m == 'v'
     let l:cursors = filter(l:cursors,
           \ {idx, val -> val[0] >= l:f && val[0] <= l:l})
   endif
-  let l:msg = '[' . len(l:cursors) . '] Your normal! command: '
+  let l:msg = '[' . len(l:cursors) . '] Your ' . l:normal . 'command: '
   let l:cmd = input({'prompt': l:msg, 'default': ''})
   " Disable coc.nvim temporarily as it's making things slow
   if exists(':CocDisable')
@@ -138,7 +136,7 @@ function! s:run(m) range
   try
     for p in reverse(sort(l:cursors, 's:list_comparer'))
       call cursor(p[0], p[1])
-      execute 'normal! ' . l:cmd
+      execute l:normal . l:cmd
     endfor
   catch /E471/
   endtry
@@ -149,18 +147,16 @@ function! s:run(m) range
   call winrestview(l:start_layout)
 endfunction
 
-" --- Commands
-command! -range FreestyleRunV <line1>,<line2>call s:run('v')
-command! -range FreestyleToggleCursorsV call s:toggle_cursors('v')
-command! FreestyleToggleCursorsN call s:toggle_cursors('n')
-command! FreestyleRunN call s:run('n')
-command! FSClear call s:clear()
+nnoremap <silent> <Plug>FreestyleToggleCursors
+      \ :call <SID>toggle_cursors('n')<CR>
+vnoremap <silent> <Plug>FreestyleToggleCursors
+      \ :<C-u>call <SID>toggle_cursors('v')<CR>
+nnoremap <silent> <Plug>FreestyleRun :call <SID>run('n')<CR>
+vnoremap <silent> <Plug>FreestyleRun :<C-u>call <SID>run('v')<CR>
+nnoremap <silent> <Plug>FreestyleClear :call <SID>clear()<CR>
 
-" --- Dynamic Mappings Based on g:freestyle_settings
-for i in ['n', 'v']
-  execute i . 'noremap <silent>' . s:settings['toggle_cursor_map'] .
-        \ ' :FreestyleToggleCursors' . toupper(i) . '<cr>'
-  execute i . 'noremap <silent>' . s:settings['run_map'] .
-        \ ' :FreestyleRun' . toupper(i) . '<cr>'
-endfor
-map <silent><C-c> :FSClear<cr>
+if !g:freestyle_settings['no_maps']
+  map <C-j> <Plug>FreestyleToggleCursors
+  map <C-k> <Plug>FreestyleRun
+  map <C-x> <Plug>FreestyleClear
+endif
