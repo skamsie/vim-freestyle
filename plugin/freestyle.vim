@@ -23,11 +23,12 @@ function! s:toggle_cursor(ln, col)
   endif
 endfunction
 
-" when visual selection spans multiple lines add a cursor to all the
-" selected lines on the starting column of the first line
+" when visual selection spans multiple lines add a cursor
+" to all the selected lines on the column equal to the cursor position
+" where the selection started (or ended if selection starts from bigger line
+" nr)
 function! s:toggle_cursors_v_multiline(sel)
-  let l:order = sort([a:sel['l_start'], a:sel['l_end']], 'n')
-  for i in range(l:order[0], l:order[1])
+  for i in range(a:sel['l_start'], a:sel['l_end'])
     call s:toggle_cursor(i, a:sel['c_start'])
   endfor
 endfunction
@@ -59,15 +60,6 @@ function! s:toggle_cursors_v_selection(sel)
   call winrestview(l:start_layout)
 endfunction
 
-function s:v_sel_coordinates()
-  return {
-        \ 'l_start': getpos("'<")[1],
-        \ 'l_end': getpos("'>")[1],
-        \ 'c_start': getpos("'<")[2],
-        \ 'c_end': getpos("'>")[2]
-        \ }
-endfunction
-
 function! s:clear()
   let b:freestyle_data = get(b:, 'freestyle_data', {})
   for k in values(b:freestyle_data)
@@ -76,11 +68,16 @@ function! s:clear()
   unlet b:freestyle_data
 endfunction
 
-function! s:toggle_cursors(m)
+function! s:toggle_cursors(m) range
   if a:m == 'n'
     call s:toggle_cursor(line('.'), col('.'))
   else
-    let l:sel = s:v_sel_coordinates()
+    let l:sel = {
+        \ 'l_start': getpos("'<")[1],
+        \ 'l_end': getpos("'>")[1],
+        \ 'c_start': getpos("'<")[2],
+        \ 'c_end': getpos("'>")[2]
+        \ }
     if l:sel['l_start'] == l:sel['l_end']
       call s:toggle_cursors_v_selection(l:sel)
     else
