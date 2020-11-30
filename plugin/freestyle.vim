@@ -3,10 +3,11 @@ let g:freestyle_settings = {
       \ 'no_maps': get(g:freestyle_settings, 'no_maps', 0),
       \ 'cursor_hl': get(g:freestyle_settings, 'cursor_hl', 'IncSearch'),
       \ 'match_hl': get(g:freestyle_settings, 'match_hl', 'MoreMsg'),
-      \ 'cmd_normal!': get(g:freestyle_settings, 'cmd_normal!', 1)
+      \ 'cmd_normal!': get(g:freestyle_settings, 'cmd_normal!', 1),
+      \ 'max_hl_count': get(g:freestyle_settings, 'max_hl_count', 600)
       \ }
 
-" helper function for sorting a list of lists with 2 elements
+" Helper function for sorting a list of lists with 2 elements
 function! s:list_comparer(i1, i2)
   if a:i1 == a:i2
     return 0
@@ -17,24 +18,33 @@ function! s:list_comparer(i1, i2)
   endif
 endfunction
 
-" toggle a single cursor at line, col
+" Toggle a single cursor at line, col
 function! s:toggle_cursor(ln, col)
   exec 'highlight! link FreestyleHL ' . g:freestyle_settings['cursor_hl']
   let l:position = string([a:ln, a:col])
   let l:pattern = '\%'. a:ln . 'l\%' . a:col . 'c'
-  let b:freestyle_data = get(b:, 'freestyle_data', {})
-  if has_key(b:freestyle_data, l:position)
+  let w:freestyle_data = get(w:, 'freestyle_data', {})
+  if has_key(w:freestyle_data, l:position)
     try
-      call matchdelete(b:freestyle_data[l:position])
-      call remove(b:freestyle_data, l:position)
-    catch/E802/
+      call matchdelete(w:freestyle_data[l:position])
+    catch /E802\|E803/
+    finally
+      call remove(w:freestyle_data, l:position)
     endtry
   else
-    let b:freestyle_data[l:position] = matchadd('FreestyleHL', l:pattern)
+    " add only cursor, but no highlight if we exceed the limit
+    if len(w:freestyle_data) < g:freestyle_settings['max_hl_count']
+      let w:freestyle_data[l:position] = matchadd('FreestyleHL', l:pattern)
+    else
+      let w:freestyle_data[l:position] = -1
+    endif
+  endif
+  if w:freestyle_data == {}
+    s:clear()
   endif
 endfunction
 
-" when visual selection spans multiple lines add a cursor
+" When visual selection spans multiple lines add a cursor
 " to all the selected lines on the column equal to the cursor position
 " where the selection started (or ended if selection starts from bigger line
 " nr)
@@ -54,31 +64,37 @@ function! s:toggle_cursors_v_selection(sel)
         \ . strcharpart(strpart(getline('.'),
         \ a:sel['c_end'] - 1), 0, 1)
   normal! gg0
-  while search('\V' . escape(l:w, '\'), '', line('$'))
-    call s:toggle_cursor(line('.'), col('.'))
-  endwhile
   if l:w == getline('1')[:len(l:w) - 1]
     call s:toggle_cursor(1, 1)
   endif
+  while search('\V' . escape(l:w, '\'), '', line('$'))
+    call s:toggle_cursor(line('.'), col('.'))
+  endwhile
   call winrestview(l:start_layout)
   return l:w
 endfunction
 
-" remove b:freestyle_data and clear highlight
+" remove w:freestyle_data and clear highlight
 function! s:clear()
-  let b:freestyle_data = get(b:, 'freestyle_data', {})
-  for k in values(b:freestyle_data)
+  let w:freestyle_data = get(w:, 'freestyle_data', {})
+  for k in values(w:freestyle_data)
     try
       call matchdelete(k)
-    catch/E802/
+    catch /E802\|E803/
     endtry
   endfor
-  unlet b:freestyle_data
+
+  " used for creating autocmmands for this event
+  silent doautocmd User FreestyleEnd
+  unlet w:freestyle_data
   hi link FreestyleHL NONE
 endfunction
 
 function! s:toggle_cursors(m)
-  let l:initial_bag = len(get(b:, 'freestyle_data', {}))
+  " used for creating autocmmands for this event
+  silent doautocmd User FreestyleStart
+
+  let l:initial_bag = len(get(w:, 'freestyle_data', {}))
   let l:w = ''
   if a:m == 'n'
     call s:toggle_cursor(line('.'), col('.'))
@@ -95,8 +111,10 @@ function! s:toggle_cursors(m)
       call s:toggle_cursors_v_multiline(l:sel)
     endif
   endif
+
   redraw
-  let l:diff = len(b:freestyle_data) - l:initial_bag
+
+  let l:diff = len(w:freestyle_data) - l:initial_bag
   let l:s = l:diff == -1 || l:diff == 1 ? '' : 's'
   if l:diff > 0
     if l:w != ''
@@ -112,27 +130,24 @@ function! s:toggle_cursors(m)
 endfunction
 
 function! s:run(m)
+  exec 'setlocal ei=all'
   let l:start_layout = winsaveview()
-  let b:freestyle_data = get(b:, 'freestyle_data', {})
+  let w:freestyle_data = get(w:, 'freestyle_data', {})
   let l:normal = g:freestyle_settings['cmd_normal!'] <= 0 ?
         \ 'normal ' : 'normal! '
-  if b:freestyle_data == {}
+  if w:freestyle_data == {}
     echo 'Freestyle: No cursors set!'
     return 0
   endif
-  let l:f = getpos("'<")[1]
-  let l:l = getpos("'>")[1]
-  let l:cursors = map(keys(b:freestyle_data), {idx, val -> eval(val)})
+  let l:cursors = map(keys(w:freestyle_data), {idx, val -> eval(val)})
   if a:m == 'v'
-    let l:cursors = filter(l:cursors,
-          \ {idx, val -> val[0] >= l:f && val[0] <= l:l})
+    let l:cursors =
+          \ filter(l:cursors, {
+          \   idx, val ->
+          \   val[0] >= getpos("'<")[1] && val[0] <= getpos("'>")[1]})
   endif
   let l:msg = '[' . len(l:cursors) . '] Your ' . l:normal . 'command: '
   let l:cmd = input({'prompt': l:msg, 'default': ''})
-  " Disable coc.nvim temporarily as it's making things slow
-  if exists(':CocDisable')
-    silent! CocDisable
-  endif
   try
     for p in reverse(sort(l:cursors, 's:list_comparer'))
       call cursor(p[0], p[1])
@@ -140,13 +155,12 @@ function! s:run(m)
     endfor
   catch /E471/
   endtry
-  if exists(':CocEnable')
-    silent! CocEnable
-  endif
+  exec 'setlocal ei='
   call s:clear()
   call winrestview(l:start_layout)
 endfunction
 
+" --- Mappings ---
 nnoremap <silent> <Plug>FreestyleToggleCursors
       \ :call <SID>toggle_cursors('n')<CR>
 vnoremap <silent> <Plug>FreestyleToggleCursors
@@ -160,3 +174,20 @@ if !g:freestyle_settings['no_maps']
   map <C-k> <Plug>FreestyleRun
   map <C-x> <Plug>FreestyleClear
 endif
+
+" --- Autocommands ---
+function! s:au_start()
+  augroup FreestyleStart
+    autocmd BufLeave,WinLeave <buffer> call s:clear()
+  augroup END
+endfunction
+
+function! s:au_stop()
+  autocmd! FreestyleStart
+endfunction
+
+augroup FreestyleDefaultsGroup
+  autocmd!
+  autocmd User FreestyleStart call s:au_start()
+  autocmd User FreestyleEnd call s:au_stop()
+augroup END
