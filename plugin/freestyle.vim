@@ -71,7 +71,7 @@ function! s:toggle_cursors_v_selection(sel)
   return l:w
 endfunction
 
-" remove w:freestyle_data and clear highlight
+" remove w:freestyle_data, clear highlight, run cleanup
 function! s:clear()
   let w:freestyle_data = get(w:, 'freestyle_data', {})
   for k in values(w:freestyle_data)
@@ -80,16 +80,14 @@ function! s:clear()
     catch /E802\|E803/
     endtry
   endfor
-
-  " used for creating autocmmands for this event
-  silent doautocmd User FreestyleEnd
   unlet w:freestyle_data
   hi link FreestyleHL NONE
+
+  call s:cleanup()
 endfunction
 
 function! s:toggle_cursors(m)
-  " used for creating autocmmands for this event
-  silent doautocmd User FreestyleStart
+  call s:setup()
 
   let l:initial_bag = len(get(w:, 'freestyle_data', {}))
   let l:w = ''
@@ -163,6 +161,22 @@ function! s:run(m)
   call winrestview(l:start_layout)
 endfunction
 
+function! s:setup()
+  augroup FreestyleAuto
+    autocmd BufLeave,WinLeave,WinNew <buffer> call s:clear()
+    " :Startiy does not seem to trigger any Buf*/Win* event
+    autocmd FileType *startify call s:clear()
+  augroup END
+
+  doautocmd User FreestyleBegin
+endfunction
+
+function! s:cleanup()
+  autocmd! FreestyleAuto
+
+  doautocmd User FreestyleEnd
+endfunction
+
 " --- Mappings ---
 nnoremap <silent> <Plug>FreestyleToggleCursors
       \ :call <SID>toggle_cursors('n')<CR>
@@ -177,21 +191,3 @@ if !g:freestyle_settings['no_maps']
   map <C-k> <Plug>FreestyleRun
   map <C-x> <Plug>FreestyleClear
 endif
-
-" --- Autocommands ---
-function! s:au_start()
-  augroup FreestyleStart
-    autocmd BufLeave,WinLeave,WinNew <buffer> call s:clear()
-    autocmd FileType *startify call s:clear()
-  augroup END
-endfunction
-
-function! s:au_stop()
-  autocmd! FreestyleStart
-endfunction
-
-augroup FreestyleDefaultsGroup
-  autocmd!
-  autocmd User FreestyleStart call s:au_start()
-  autocmd User FreestyleEnd call s:au_stop()
-augroup END
