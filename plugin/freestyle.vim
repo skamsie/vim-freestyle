@@ -1,11 +1,14 @@
+if exists('g:loaded_freestyle')
+  finish
+endif
+let g:loaded_freestyle = 1
+
 let g:freestyle_settings = get(g:, 'freestyle_settings', {})
-let g:freestyle_settings = {
-      \ 'no_maps': get(g:freestyle_settings, 'no_maps', 0),
-      \ 'cursor_hl': get(g:freestyle_settings, 'cursor_hl', 'IncSearch'),
-      \ 'match_hl': get(g:freestyle_settings, 'match_hl', 'MoreMsg'),
-      \ 'cmd_normal!': get(g:freestyle_settings, 'cmd_normal!', 1),
-      \ 'max_hl_count': get(g:freestyle_settings, 'max_hl_count', 600)
-      \ }
+let s:no_maps = get(g:freestyle_settings, 'no_maps', 0)
+let s:cursor_hl = get(g:freestyle_settings, 'cursor_hl', 'IncSearch')
+let s:match_hl = get(g:freestyle_settings, 'match_hl', 'MoreMsg')
+let s:cmd_normal = get(g:freestyle_settings, 'cmd_normal!', 1)
+let s:max_hl_count = get(g:freestyle_settings, 'max_hl_count', 600)
 
 " Helper function for sorting a list of lists with 2 elements
 function! s:list_comparer(i1, i2)
@@ -20,7 +23,7 @@ endfunction
 
 " Toggle a single cursor at line, col
 function! s:toggle_cursor(ln, col)
-  exec 'highlight! link FreestyleHL ' . g:freestyle_settings['cursor_hl']
+  exec 'highlight! link FreestyleHL ' . s:cursor_hl
   let l:position = string([a:ln, a:col])
   let l:pattern = '\%'. a:ln . 'l\%' . a:col . 'c'
   let w:freestyle_data = get(w:, 'freestyle_data', {})
@@ -33,7 +36,7 @@ function! s:toggle_cursor(ln, col)
     endtry
   else
     " add only cursor, but no highlight if we exceed the limit
-    if len(w:freestyle_data) < g:freestyle_settings['max_hl_count']
+    if len(w:freestyle_data) < s:max_hl_count
       let w:freestyle_data[l:position] = matchadd('FreestyleHL', l:pattern)
     else
       let w:freestyle_data[l:position] = -1
@@ -114,7 +117,7 @@ function! s:toggle_cursors(m)
   if l:diff > 0
     if l:w != ''
       echo 'Added ' . l:diff . ' cursor' . l:s . ' for pattern: '
-            \ | exec 'echohl ' . g:freestyle_settings['match_hl'] |
+            \ | exec 'echohl ' . s:match_hl |
             \ echon l:w | echohl NONE | echon ' len: ' . strchars(l:w)
     else
       echo 'Added ' . l:diff . ' cursor' . l:s
@@ -134,7 +137,7 @@ function! s:run(m)
   exec 'setlocal eventignore=all'
   let l:start_layout = winsaveview()
   let w:freestyle_data = get(w:, 'freestyle_data', {})
-  let l:normal = g:freestyle_settings['cmd_normal!'] <= 0 ?
+  let l:normal = s:cmd_normal <= 0 ?
         \ 'normal ' : 'normal! '
   if w:freestyle_data == {}
     echo 'Freestyle: No cursors set!'
@@ -148,7 +151,7 @@ function! s:run(m)
           \   val[0] >= getpos("'<")[1] && val[0] <= getpos("'>")[1]})
   endif
   let l:msg = '[' . len(l:cursors) . '] Your ' . l:normal . 'command: '
-  let l:cmd = input({'prompt': l:msg, 'default': ''})
+  let l:cmd = input(l:msg, '')
   try
     for p in reverse(sort(l:cursors, 's:list_comparer'))
       call cursor(p[0], p[1])
@@ -168,13 +171,13 @@ function! s:setup()
     autocmd FileType *startify call s:clear()
   augroup END
 
-  doautocmd User FreestyleBegin
+  silent doautocmd User FreestyleBegin
 endfunction
 
 function! s:cleanup()
   autocmd! FreestyleAuto
 
-  doautocmd User FreestyleEnd
+  silent doautocmd User FreestyleEnd
 endfunction
 
 " --- Mappings ---
@@ -186,7 +189,7 @@ nnoremap <silent> <Plug>FreestyleRun :call <SID>run('n')<CR>
 vnoremap <silent> <Plug>FreestyleRun :<C-u>call <SID>run('v')<CR>
 nnoremap <silent> <Plug>FreestyleClear :call <SID>clear()<CR>
 
-if !g:freestyle_settings['no_maps']
+if !s:no_maps
   map <C-j> <Plug>FreestyleToggleCursors
   map <C-k> <Plug>FreestyleRun
   map <C-x> <Plug>FreestyleClear
