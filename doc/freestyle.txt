@@ -22,29 +22,31 @@ within the same buffer at once.
 
 USAGE                                              *freestyle-usage*
 
-NOTE that the following examples assume the default key mappings.
+NOTES~
+  - the following examples assume the default key mappings
+  - for lack of a better word, the term 'cursor' is used to denote a location
+    in the buffer (line, column)
 
-Use the designated key mapping (default <C-j>) for adding a freestyle cursor
-at the current cursor location. The location will be highlighted. To remove a
-cursor use the same key over the highlighted cursor.  After the desired number
-of cursors was added, use the mapping for running (default <C-k>). In the
-command line type the command and then run it by hitting enter <CR>. If the
-command uses special keys, like CTRL, ESC, ENTER, etc, you need to use <C-v>
-before entering the special key, see `:he c_CTRL-V` for more details.
+Use <C-j> to add a freestyle cursor at the current cursor location. The
+location will be highlighted. To remove a cursor use the same key over the
+highlighted cursor.  After the desired number of cursors was added, use the
+mapping for inputing the command <C-k>. In the command line type the command
+and then run it by hitting enter <CR>. If the command uses special keys, like
+CTRL, ESC, ENTER, etc, you need to use <C-v> before entering the special key,
+see `:he c_CTRL-V` for more details.
 
   Examples~
 
   1) [<n>] Your normal! command: ciwfoo
-  2) [<n>] Your normal command: wbi"^[ea"
+  2) [<n>] Your normal command: wbi"`^[`ea"
 
 1) Will run `ciwfoo` at all the locations where the cursors were added. The `<n>`
 represents the number of cursors where the command applies. `normal!` means
 the command is run disregarding the user key mappings.
-2) `^[` means the Escape key. It was introduced with the sequence
-`<C-v><Esc>`. `normal` means the command is using considering the user
-mappings.
+2) `^[` means the Escape key. It was added with the sequence `<C-v><Esc>`.
+`normal` means the command is considering the user mappings.
 
-Freestyle commands can be used on normal mode and visual mode, and depending
+Freestyle commands can be used on normal mode and visual mode. Depending
 on the mode and the selected text, they do something different.
 
   Normal mode~
@@ -94,10 +96,9 @@ one or more of the following keys:
   `cursor_hl` - specify the highlight group for the cursors
   `match_hl` - specify the highlight group for the last selected pattern
   `cmd_no_bang` - set to 1 to use normal instead of normal!
-  `max_hl_count` - maxim number of cursor highlights; the number of cursors
-    will not be affected, just their highlights. The reason is that vim can
-    become slow if thousends of independent highlights are present at the same
-    time in the buffer.
+  `max_hl_count` - maximum number of cursor highlights; the number of cursors
+    will not be affected, just their highlights. This prevents vim from
+    becoming very slow if thousands of cursors are added
 
   Example (showing defaults)~
 >
