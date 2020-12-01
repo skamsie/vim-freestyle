@@ -39,9 +39,6 @@ function! s:toggle_cursor(ln, col)
       let w:freestyle_data[l:position] = -1
     endif
   endif
-  if w:freestyle_data == {}
-    s:clear()
-  endif
 endfunction
 
 " When visual selection spans multiple lines add a cursor
@@ -127,10 +124,16 @@ function! s:toggle_cursors(m)
   else
     echo 'Removed ' . -l:diff . ' cursor' . l:s
   endif
+
+  " run FreestyleEnd autocommands if all cursors have been removed
+  if w:freestyle_data == {}
+    call s:clear()
+  endif
 endfunction
 
 function! s:run(m)
-  exec 'setlocal ei=all'
+  let l:ei = &eventignore
+  exec 'setlocal eventignore=all'
   let l:start_layout = winsaveview()
   let w:freestyle_data = get(w:, 'freestyle_data', {})
   let l:normal = g:freestyle_settings['cmd_normal!'] <= 0 ?
@@ -155,7 +158,7 @@ function! s:run(m)
     endfor
   catch /E471/
   endtry
-  exec 'setlocal ei='
+  exec 'setlocal eventignore='. l:ei
   call s:clear()
   call winrestview(l:start_layout)
 endfunction
@@ -178,7 +181,8 @@ endif
 " --- Autocommands ---
 function! s:au_start()
   augroup FreestyleStart
-    autocmd BufLeave,WinLeave <buffer> call s:clear()
+    autocmd BufLeave,WinLeave,WinNew <buffer> call s:clear()
+    autocmd FileType *startify call s:clear()
   augroup END
 endfunction
 
