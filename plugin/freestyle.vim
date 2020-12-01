@@ -7,7 +7,7 @@ let g:freestyle_settings = get(g:, 'freestyle_settings', {})
 let s:no_maps = get(g:freestyle_settings, 'no_maps', 0)
 let s:cursor_hl = get(g:freestyle_settings, 'cursor_hl', 'IncSearch')
 let s:match_hl = get(g:freestyle_settings, 'match_hl', 'MoreMsg')
-let s:cmd_normal = get(g:freestyle_settings, 'cmd_normal!', 1)
+let s:cmd_no_bang = get(g:freestyle_settings, 'cmd_no_bang', 0)
 let s:max_hl_count = get(g:freestyle_settings, 'max_hl_count', 600)
 
 " Helper function for sorting a list of lists with 2 elements
@@ -126,7 +126,7 @@ function! s:toggle_cursors(m)
     echo 'Removed ' . -l:diff . ' cursor' . l:s
   endif
 
-  " run FreestyleEnd autocommands if all cursors have been removed
+  " make sure we clean up if there are no cursors left
   if w:freestyle_data == {}
     call s:clear()
   endif
@@ -137,7 +137,7 @@ function! s:run(m)
   exec 'setlocal eventignore=all'
   let l:start_layout = winsaveview()
   let w:freestyle_data = get(w:, 'freestyle_data', {})
-  let l:normal = s:cmd_normal <= 0 ?
+  let l:normal = s:cmd_no_bang <= 0 ?
         \ 'normal ' : 'normal! '
   if w:freestyle_data == {}
     echo 'Freestyle: No cursors set!'

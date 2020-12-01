@@ -1,0 +1,132 @@
+*freestyle.txt* Multiple commands in bulk
+
+Author:  skamsie
+Website: https://github.com/skamsie/vim-freestyle
+
+==============================================================================
+CONTENTS                                           *freestyle*
+
+1. Introduction .................................. |freestyle-intro|
+2. Usage ......................................... |freestyle-usage|
+3. Configuration ................................. |freestyle-configuration|
+4. Key Mapping ................................... |freestyle-keymapping|
+5. Autocommands .................................. |freestyle-autocommands|
+==============================================================================
+
+
+INTRODUCTION                                       *freestyle-intro*
+
+Freestyle is a vim plugin for running a normal command for multiple locations
+within the same buffer at once.
+
+
+USAGE                                              *freestyle-usage*
+
+NOTE that the following examples assume the default key mappings.
+
+Use the designated key mapping (default <C-j>) for adding a freestyle cursor
+at the current cursor location. The location will be highlighted. To remove a
+cursor use the same key over the highlighted cursor.  After the desired number
+of cursors was added, use the mapping for running (default <C-k>). In the
+command line type the command and then run it by hitting enter <CR>. If the
+command uses special keys, like CTRL, ESC, ENTER, etc, you need to use <C-v>
+before entering the special key, see `:he c_CTRL-V` for more details.
+
+  Examples~
+
+  1) [<n>] Your normal! command: ciwfoo
+  2) [<n>] Your normal command: wbi"^[ea"
+
+1) Will run `ciwfoo` at all the locations where the cursors were added. The `<n>`
+represents the number of cursors where the command applies. `normal!` means
+the command is run disregarding the user key mappings.
+2) `^[` means the Escape key. It was introduced with the sequence
+`<C-v><Esc>`. `normal` means the command is using considering the user
+mappings.
+
+Freestyle commands can be used on normal mode and visual mode, and depending
+on the mode and the selected text, they do something different.
+
+  Normal mode~
+
+  <C-j> Will toggle cursor at the current vim cursor postion.
+  <C-k> Will trigger command input for all the added cursors.
+  <C-x> Remove all cursors
+
+  Visual mode~
+
+  <C-j>
+    When visual selection spans multiple lines, it will toggle a cursor
+    to all the selected lines on the column equal to the cursor position
+    where the selection started (or ended if selection starts from bigger
+    line nr).
+    When visual selection is on the same line, it will toggle a cursor to the
+    beginning of the selected pattern throughout the buffer.
+  <C-k>
+    When visually selecting one or multiple lines, it will only consider
+    the cursors within those selected lines for the normal command.
+  <C-x> Remove all cursors
+
+  Remove cursors~
+
+  To remove a single cursor, use <C-j> on a previously added cursor. On
+  'buffer leave' and 'window leave' events all cursors are removed. They can
+  also be removed at any time with <C-x>
+
+  NOTE
+  The order in which the command is executed is from bottom to top. For
+  example, given 3 cursors at these locations
+
+    a: `line: 33, col: 21`
+    b: `line: 34, col: 12`
+    c: `line: 34, col: 2`
+
+  the order of execution will be b,c,a
+
+
+CONFIGURATION                                      *freestyle-configuration*
+
+You can change the freestyle default settings by adding the following global
+variable in your vimrc `g:freestyle_settings`. It should be a dictionary with
+one or more of the following keys:
+
+  `no_maps` - set to 1 if you want to disable default key mappings
+  `cursor_hl` - specify the highlight group for the cursors
+  `match_hl` - specify the highlight group for the last selected pattern
+  `cmd_no_bang` - set to 1 to use normal instead of normal!
+  `max_hl_count` - maxim number of cursor highlights; the number of cursors
+    will not be affected, just their highlights. The reason is that vim can
+    become slow if thousends of independent highlights are present at the same
+    time in the buffer.
+
+  Example (showing defaults)~
+>
+  let g:freestyle_settings = {
+        \ 'no_maps': 0,
+        \ 'cursor_hl': 'IncSearch',
+        \ 'match_hl': 'MoreMsg',
+        \ 'cmd_no_bang': 0,
+        \ 'max_hl_count': 600
+        \ }
+<
+KEY MAPPING                                        *freestyle-keymapping*
+
+You can change the default key mappings using the following pattern
+(use just `map`)
+
+  Example (showing defaults)~
+>
+  map <C-j> <Plug>FreestyleToggleCursors
+  map <C-k> <Plug>FreestyleRun
+  map <C-x> <Plug>FreestyleClear
+<
+
+AUTOCOMMANDS                                       *freestyle-autocommands*
+
+If you would like to run autocommands when freestyle starts and stops, you
+can do so by using the following syntax in your vimrc:
+>
+  autocmd User FreestyleBegin echo 'begin'
+  autocmd User FreestyleEnd echo 'end'
+<
+vim:ft=help
