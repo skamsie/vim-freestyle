@@ -16,7 +16,7 @@ CONTENTS                                           *freestyle*
 
 INTRODUCTION                                       *freestyle-intro*
 
-Freestyle is a vim plugin for running a normal command for multiple locations
+Freestyle is a vim plugin for running normal commands for multiple locations
 within the same buffer at once.
 
 
@@ -24,12 +24,11 @@ USAGE                                              *freestyle-usage*
 
 NOTES~
   - the following examples assume the default key mappings
-  - for lack of a better word, the term 'cursor' is used to denote a location
-    in the buffer (line, column)
-
+  - for lack of a better word, the term 'cursor' is used to denote a
+    saved position in the buffer (line, column)
 Use <C-j> to add a freestyle cursor at the current cursor location. The
 location will be highlighted. To remove a cursor use the same key over the
-highlighted cursor.  After the desired number of cursors was added, use the
+highlighted cursor. After the desired number of cursors was added, use the
 mapping for inputing the command <C-k>. In the command line type the command
 and then run it by hitting enter <CR>. If the command uses special keys, like
 CTRL, ESC, ENTER, etc, you need to use <C-v> before entering the special key,
@@ -76,8 +75,9 @@ on the mode and the selected text, they do something different.
   also be removed at any time with <C-x>
 
   NOTE
-  The order in which the command is executed is from bottom to top. For
-  example, given 3 cursors at these locations
+  The order in which the command is executed is from bottom to top, no matter
+  in which order they were added. For example, given 3 cursors at these
+  locations
 
     a: `line: 33, col: 21`
     b: `line: 34, col: 12`
@@ -95,7 +95,7 @@ one or more of the following keys:
   `no_maps` - set to 1 if you want to disable default key mappings
   `cursor_hl` - specify the highlight group for the cursors
   `match_hl` - specify the highlight group for the last selected pattern
-  `cmd_no_bang` - set to 1 to use normal instead of normal!
+  `normal_no_bang` - set to 1 to use normal instead of normal!
   `max_hl_count` - maximum number of cursor highlights; the number of cursors
     will not be affected, just their highlights. This prevents vim from
     becoming very slow if thousands of cursors are added
@@ -106,7 +106,7 @@ one or more of the following keys:
         \ 'no_maps': 0,
         \ 'cursor_hl': 'IncSearch',
         \ 'match_hl': 'MoreMsg',
-        \ 'cmd_no_bang': 0,
+        \ 'normal_no_bang': 0,
         \ 'max_hl_count': 600
         \ }
 <
