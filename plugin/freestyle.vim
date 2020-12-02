@@ -174,7 +174,10 @@ function! s:setup()
 endfunction
 
 function! s:cleanup()
-  autocmd! FreestyleAuto
+  try
+    autocmd! FreestyleAuto
+  catch /E216/
+  endtry
 
   silent doautocmd User FreestyleEnd
 endfunction
@@ -191,5 +194,5 @@ nnoremap <silent> <Plug>FreestyleClear :call <SID>clear()<CR>
 if !s:no_maps
   map <C-j> <Plug>FreestyleToggleCursors
   map <C-k> <Plug>FreestyleRun
-  map <C-x> <Plug>FreestyleClear
+  map <C-q> <Plug>FreestyleClear
 endif

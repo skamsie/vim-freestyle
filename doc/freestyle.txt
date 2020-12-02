@@ -52,7 +52,7 @@ on the mode and the selected text, they do something different.
 
   <C-j> Will toggle cursor at the current vim cursor postion.
   <C-k> Will trigger command input for all the added cursors.
-  <C-x> Remove all cursors
+  <C-q> Remove all cursors
 
   Visual mode~
 
@@ -66,13 +66,13 @@ on the mode and the selected text, they do something different.
   <C-k>
     When visually selecting one or multiple lines, it will only consider
     the cursors within those selected lines for the normal command.
-  <C-x> Remove all cursors
+  <C-q> Remove all cursors
 
   Remove cursors~
 
   To remove a single cursor, use <C-j> on a previously added cursor. On
   'buffer leave' and 'window leave' events all cursors are removed. They can
-  also be removed at any time with <C-x>
+  also be removed at any time with <C-q>
 
   NOTE
   The order in which the command is executed is from bottom to top, no matter
@@ -119,7 +119,7 @@ You can change the default key mappings using the following pattern
 >
   map <C-j> <Plug>FreestyleToggleCursors
   map <C-k> <Plug>FreestyleRun
-  map <C-x> <Plug>FreestyleClear
+  map <C-q> <Plug>FreestyleClear
 <
 
 AUTOCOMMANDS                                       *freestyle-autocommands*
